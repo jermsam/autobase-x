@@ -43,6 +43,7 @@ console.log(chalk.green('\n(1) Ordering Chat Messages\n'));
     const node = await viewA.get(i);
     console.log(node.value.toString());
   }
+
   console.log(chalk.bgGray('\n(2) READING VIEW B \n'));
   const viewB = baseB.view;
   await viewB.update();
