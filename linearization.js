@@ -228,3 +228,70 @@ console.log('___________________________________')
     statusB: viewB.status,
   })
 }
+
+console.log('___________________________________')
+console.log('___________________________________')
+
+console.log(chalk.green('\n(1) Sharing views with others\n'));
+console.log(chalk.green('\n(1) Remote Linearization\n'));
+
+{
+  const store = new Corestore(ram)
+  const inputA = store.get({name: 'A'})
+  const inputB = store.get({name: 'B'})
+  const outputA = store.get({name: 'A0'})
+
+  const baseA = new Autobase({
+    inputs: [inputA, inputB],
+    localInput: inputA,
+    outputs: [outputA],
+    localOutput: outputA,
+    eagerUpdate: false
+  })
+  const baseB = new Autobase({
+    inputs: [inputA, inputB],
+    localInput: inputB,
+    outputs: [outputA],
+    eagerUpdate: false
+  })
+
+  await baseA.append('A0: hello!');
+  await baseB.append('B0: hi! good to hear from you');
+  await baseA.append('A1: likewise. fun exercise huh?');
+  await baseB.append('B1: yep. great time.');
+
+  baseA.start({
+    unwrap: true,
+    apply: async (view, batch)=>{
+      batch = batch.map(({ value }) => Buffer.from(value.toString('utf-8').toUpperCase(), 'utf-8'))
+      await view.append(batch)
+    }
+  })
+
+
+
+  baseB.start({
+    unwrap: true,
+    apply: async (view, batch)=>{
+      batch = batch.map(({ value }) => Buffer.from(value.toString('utf-8').toUpperCase(), 'utf-8'))
+      await view.append(batch)
+    }
+  })
+
+
+
+  const viewA = baseA.view
+  await viewA.update()
+  const viewB = baseB.view
+  await viewB.update()
+
+  for (let i = 0; i < viewA.length; i++) {
+    const node = await viewA.get(i);
+    console.log(node.value.toString());
+  }
+
+  for (let i = 0; i < viewB.length; i++) {
+    const node = await viewB.get(i);
+    console.log(node.value.toString());
+  }
+}
