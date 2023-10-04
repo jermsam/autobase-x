@@ -232,26 +232,28 @@ console.log('___________________________________')
 console.log('___________________________________')
 console.log('___________________________________')
 
-console.log(chalk.green('\n(1) Sharing views with others\n'));
-console.log(chalk.green('\n(1) Remote Linearization\n'));
+console.log(chalk.green('\n(1) Sharing views with others\n \r(Remote Linearization)\r'));
 
 {
   const store = new Corestore(ram)
   const inputA = store.get({name: 'A'})
   const inputB = store.get({name: 'B'})
-  const outputA = store.get({name: 'A0'})
+  const outputA = store.get({name: 'A0', valueEncoding: 'json'})
+
+  const inputs = [inputA, inputB]
+  const outputs = [outputA]
 
   const baseA = new Autobase({
-    inputs: [inputA, inputB],
+    inputs,
+    outputs,
     localInput: inputA,
-    outputs: [outputA],
     localOutput: outputA,
     eagerUpdate: false
   })
   const baseB = new Autobase({
-    inputs: [inputA, inputB],
+    inputs,
+    outputs,
     localInput: inputB,
-    outputs: [outputA],
     eagerUpdate: false
   })
 
@@ -262,7 +264,7 @@ console.log(chalk.green('\n(1) Remote Linearization\n'));
 
   baseA.start({
     unwrap: true,
-    apply: async (view, batch)=>{
+    apply: async (view, batch)=> {
       batch = batch.map(({ value }) => Buffer.from(value.toString('utf-8').toUpperCase(), 'utf-8'))
       await view.append(batch)
     }
@@ -273,6 +275,7 @@ console.log(chalk.green('\n(1) Remote Linearization\n'));
   baseB.start({
     unwrap: true,
     apply: async (view, batch)=>{
+      console.log('baseB append called')
       batch = batch.map(({ value }) => Buffer.from(value.toString('utf-8').toUpperCase(), 'utf-8'))
       await view.append(batch)
     }
@@ -280,18 +283,27 @@ console.log(chalk.green('\n(1) Remote Linearization\n'));
 
 
 
+  console.log('\nREADING VIEW A \n')
   const viewA = baseA.view
   await viewA.update()
-  const viewB = baseB.view
-  await viewB.update()
 
   for (let i = 0; i < viewA.length; i++) {
     const node = await viewA.get(i);
     console.log(node.value.toString());
   }
-
+  console.log('___________________________________')
+  console.log('\nREADING VIEW B \n')
+  const viewB = baseA.view
+  await viewB.update()
   for (let i = 0; i < viewB.length; i++) {
     const node = await viewB.get(i);
     console.log(node.value.toString());
   }
 }
+console.log(
+  '\nYou should see that the console.log(\'baseB append called\') is never printed,' +
+  'because the way it\'s setup with only using userAOutput as a remote output and' +
+  'having eagerUpdate disabled means it doesn\'t update it\'s view until you call await viewB.update()' +
+  'which we do after viewA is updated, meaning it can check it\'s remote views and see if they already computed the view.\n' +
+  ' If so, then it just uses that for it\'s view.\n'
+);
